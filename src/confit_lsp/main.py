@@ -3,8 +3,9 @@ TOML LSP Server with element validation and hover support.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Sequence
 
+from pydantic import ValidationError
 import tomlkit
 from pygls.lsp.server import LanguageServer
 from lsprotocol.types import (
@@ -38,10 +39,19 @@ from lsprotocol.types import (
 )
 
 from confit_lsp.descriptor import Data, LineNumber
-from confit_lsp.registry import REGISTRY
+from confit_lsp.registry import REGISTRY, Element
+import logging
 
-logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(
+    filename="/tmp/config-lsp.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+# In your server code
 logger = logging.getLogger(__name__)
+logger.info("LSP server started")
 
 server = LanguageServer("config-lsp", "v0.1")
 
@@ -87,52 +97,134 @@ def find_key_positions(content: str, doc: tomlkit.TOMLDocument) -> list:
     return positions
 
 
+def get_key_value_offsets(
+    line: str,
+    key: str,
+) -> tuple[
+    tuple[int, int],
+    tuple[int, int],
+]:
+    start_char = line.find(key)
+
+    key_offset = start_char, start_char + len(key)
+
+    start_char += line[start_char:].find("=") + 1
+    start_char += len(line[start_char:]) - len(line[start_char:].lstrip())
+    end_char = len(line.rstrip())
+
+    value_offset = start_char, end_char
+
+    return key_offset, value_offset
+
+
 def validate_config(uri: str, content: str) -> list[Diagnostic]:
     """Validate config.toml and return diagnostics"""
     diagnostics = []
+    lines = content.split("\n")
 
     try:
-        doc = tomlkit.parse(content)
-        positions = find_key_positions(content, doc)
+        data = Data.from_source(content)
 
-        for pos in positions:
-            value = pos["value"]
-            line = pos["line"]
-            col_start = pos["col_start"]
-            col_end = pos["col_end"]
+        factory_paths = dict[str, Element]()
 
-            # Check if value is a string
+        for (path, key), line_number in data.path2line.items():
+            if key != "factory":
+                continue
+
+            root = data.get_root(path)
+            value = root[key]
+
+            line = lines[line_number]
+            _, (start_char, end_char) = get_key_value_offsets(line, key)
+
+            element_range = Range(
+                start=Position(line=line_number, character=start_char + 1),
+                end=Position(line=line_number, character=end_char - 1),
+            )
+
             if not isinstance(value, str):
                 diagnostics.append(
                     Diagnostic(
-                        range=Range(
-                            start=Position(line=line, character=col_start),
-                            end=Position(line=line, character=col_end),
-                        ),
+                        range=element_range,
                         message=f"Element value must be a string, got {type(value).__name__}",
                         severity=DiagnosticSeverity.Error,
-                        source="toml-lsp",
+                        source="confit-lsp",
                     )
                 )
                 continue
 
             if value not in REGISTRY:
-                # Find the value position for better error highlighting
-                lines = content.split("\n")
-                value_line = lines[line]
-                value_start = value_line.find(f'"{value}"')
-                if value_start == -1:
-                    value_start = value_line.find(f"'{value}'")
+                diagnostics.append(
+                    Diagnostic(
+                        range=element_range,
+                        message=f"Element '{value}' not found in the registry.",
+                        severity=DiagnosticSeverity.Error,
+                        source="confit-lsp",
+                    )
+                )
+                continue
 
-                if value_start != -1:
-                    value_end = value_start + len(value) + 2  # Include quotes
+            factory_paths[path] = REGISTRY[value]
+
+        for (path, key), line_number in data.path2line.items():
+            if key == "factory":
+                continue
+
+            element = factory_paths.get(path)
+            if element is None:
+                continue
+
+            line = lines[line_number]
+            (start_char, end_char), _ = get_key_value_offsets(line, key)
+            element_range = Range(
+                start=Position(line=line_number, character=start_char),
+                end=Position(line=line_number, character=end_char),
+            )
+
+            if key not in element.input_model.model_fields:
+                diagnostics.append(
+                    Diagnostic(
+                        range=element_range,
+                        message=f"Argument `{key}` does not exist for factory function `{element.name}`.",
+                        severity=DiagnosticSeverity.Error,
+                        source="confit-lsp",
+                    )
+                )
+
+        for path, element in factory_paths.items():
+            root = data.get_root(path)
+            try:
+                element.input_model.model_validate(root)
+            except ValidationError as e:
+                logger.debug(f"Pydantic error: {e}")
+                for error in e.errors():
+                    msg = error["msg"]
+
+                    (key,) = error["loc"]
+                    logger.debug(f"key: {repr(key)}")
+                    logger.debug(f"msg: {repr(msg)}")
+
+                    assert isinstance(key, str)
+
+                    line_number = data.path2line.get((path, key))
+
+                    if line_number is None:
+                        logger.debug("key not found")
+                        continue
+
+                    line = lines[line_number]
+                    _, (start_char, end_char) = get_key_value_offsets(line, key)
+                    element_range = Range(
+                        start=Position(line=line_number, character=start_char),
+                        end=Position(line=line_number, character=end_char),
+                    )
+
+                    logger.debug(f"range: {repr(msg)}")
+
                     diagnostics.append(
                         Diagnostic(
-                            range=Range(
-                                start=Position(line=line, character=value_start),
-                                end=Position(line=line, character=value_end),
-                            ),
-                            message=f"Element '{value}' not found in the registry.",
+                            range=element_range,
+                            message=f"Argument `{key}` has incompatible type.\n{msg}",
                             severity=DiagnosticSeverity.Error,
                             source="confit-lsp",
                         )

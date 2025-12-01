@@ -41,6 +41,14 @@ class Data:
     data: TomlDict
     path2line: dict[FullKey, LineNumber]
 
+    def get_root(self, path: str) -> TomlDict:
+        d = self.data
+
+        for key in path.split("."):
+            d = d[key]
+
+        return d
+
     @cached_property
     def line2path(self) -> dict[LineNumber, FullKey]:
         return {line_number: path for path, line_number in self.path2line.items()}

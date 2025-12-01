@@ -1,4 +1,4 @@
 [test.element]
-factory = "something-interesting"
-a = "test"
-b = 2
+factory = "add"
+a = 1.9
+other = 2

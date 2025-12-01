@@ -9,6 +9,7 @@ from .inspection import get_function_location, get_pydantic_input_model
 
 @dataclass
 class Element:
+    name: str
     func: Callable
     location: Location
     input_model: type[BaseModel]
@@ -41,6 +42,7 @@ def register[F: Callable](
         input_model = get_pydantic_input_model(f)
 
         element = Element(
+            name=name,
             func=f,
             location=location,
             input_model=input_model,
@@ -58,10 +60,10 @@ def register[F: Callable](
 @register("add")
 def add(
     a: float,
-    b: float,
+    other: float,
 ) -> float:
     """Add two numbers together."""
-    return a + b
+    return a + other
 
 
 @register("multiply")
