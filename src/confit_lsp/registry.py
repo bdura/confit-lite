@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Callable, overload
 
+from importlib.metadata import entry_points
+
+
 from lsprotocol.types import Location
 from pydantic import BaseModel, HttpUrl
 
@@ -69,7 +72,7 @@ def add(
 @register("multiply")
 def multiply(
     a: float,
-    b: float,
+    b: float = 1.0,
 ) -> float:
     """Multiply two numbers together."""
     return a * b
@@ -82,3 +85,11 @@ def something(
 ) -> float:
     """Something random."""
     ...
+
+
+def load_plugins() -> None:
+    for plugin in entry_points(group="confit"):
+        plugin.load()
+
+
+load_plugins()
