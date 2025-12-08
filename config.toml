@@ -1,4 +1,4 @@
 [test.element]
 factory = "something-interesting"
 a = 63
-b = "https://test"
+url = "https://test"

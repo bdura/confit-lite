@@ -202,7 +202,7 @@ wheels = [
 [[package]]
 name = "persil"
 version = "0.2.0"
-source = { git = "https://github.com/bdura/persil#0403599cc28ea16cddac2d8adc29fc663c8511a4" }
+source = { git = "https://github.com/bdura/persil#1d21edaf6c754a09401100c10e6084630a06bcd6" }
 
 [[package]]
 name = "pydantic"

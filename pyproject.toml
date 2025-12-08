@@ -17,6 +17,9 @@ dependencies = [
 [project.scripts]
 confit-lsp = "confit_lsp.main:run"
 
+[project.entry-points.'confit']
+subtract = "confit_lsp.factories"
+
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
