@@ -1,15 +1,12 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Iterator, Self, Sequence
-from attr import Factory
-from lsprotocol.types import Position, Range
+from typing import Any, Self, Sequence
+from lsprotocol.types import Position
 import rtoml
 
 
-from confit_lsp.capabilities import FunctionDescription
-from confit_lsp.parsers.toml import parse_toml
-from confit_lsp.parsers.types import Element, ElementPath
-from confit_lsp.registry import REGISTRY
+from .parsers import parse_toml
+from .parsers import Element, ElementPath
 
 
 @dataclass
@@ -24,35 +21,11 @@ class ConfigurationView:
     def path2element(self) -> dict[ElementPath, Element]:
         return {element.path: element for element in self.elements}
 
-    def position2element(self, position: Position) -> Element | None:
+    def get_element_from_position(self, position: Position) -> Element | None:
         for element in self.elements:
             if element.key.start <= position < element.value.end:
                 return element
         return None
-
-    def get_factory(self, position: Position) -> FunctionDescription | None:
-        element = self.position2element(position)
-
-        if element is None:
-            return None
-
-        *path, key = element.path
-
-        if key != "factory":
-            return None
-
-        root = self.get_object(path)
-        factory_name = root.get("factory")
-
-        if factory_name is None:
-            return None
-
-        factory = REGISTRY.get(factory_name)
-
-        if factory is None:
-            return None
-
-        return FunctionDescription.from_function(factory_name, factory)
 
     def get_value(self, path: Sequence[str]) -> Any:
         return self.get_object(path[:-1])[path[-1]]

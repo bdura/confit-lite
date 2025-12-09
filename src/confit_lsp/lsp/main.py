@@ -11,7 +11,6 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
-    TEXT_DOCUMENT_DID_CHANGE,
     INITIALIZE,
     TEXT_DOCUMENT_HOVER,
     TEXT_DOCUMENT_DEFINITION,
@@ -22,16 +21,13 @@ from lsprotocol.types import (
     CompletionParams,
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
-    DidChangeTextDocumentParams,
     Diagnostic,
     DiagnosticSeverity,
     InlayHint,
     InlayHintKind,
     InlayHintParams,
     InsertTextFormat,
-    Position,
     PublishDiagnosticsParams,
-    Range,
     Hover,
     MarkupContent,
     MarkupKind,
@@ -41,11 +37,11 @@ from lsprotocol.types import (
     InitializeParams,
 )
 from pygls.workspace import TextDocument
-
-from confit_lsp.descriptor import ConfigurationView
-from confit_lsp.parsers.types import Element, ElementPath
 from confit_lsp.registry import REGISTRY
-from confit_lsp.capabilities import FunctionDescription
+
+from .descriptor import ConfigurationView
+from .parsers.types import Element, ElementPath
+from .capabilities import FunctionDescription
 
 
 logging.basicConfig(
@@ -62,23 +58,23 @@ server = LanguageServer("confit-lsp", "v0.1")
 
 
 def validate_config(doc: TextDocument) -> list[Diagnostic]:
-    """Validate config.toml and return diagnostics"""
+    """Validate .toml and return diagnostics"""
     content = doc.source
 
     diagnostics = []
 
     try:
-        data = ConfigurationView.from_source(content)
+        view = ConfigurationView.from_source(content)
 
         factories = dict[ElementPath, FunctionDescription]()
 
-        for element in data.elements:
+        for element in view.elements:
             *path, key = element.path
 
             if key != "factory":
                 continue
 
-            root = data.get_object(path)
+            root = view.get_object(path)
             factory_name = root[key]
 
             if not isinstance(factory_name, str):
@@ -108,7 +104,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                 REGISTRY[factory_name],
             )
 
-        for element in data.elements:
+        for element in view.elements:
             path = element.path
             key = path[-1]
 
@@ -130,7 +126,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                 )
 
         for path, factory in factories.items():
-            root = data.get_object(path).copy()
+            root = view.get_object(path).copy()
 
             extra_keys = (
                 set(root.keys())
@@ -141,7 +137,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
             for key in extra_keys:
                 diagnostics.append(
                     Diagnostic(
-                        range=data.path2element[(*path, key)].key,
+                        range=view.path2element[(*path, key)].key,
                         message=f"Argument `{key}` is not recognized by `{factory.name}` and will be ignored.",
                         severity=DiagnosticSeverity.Warning,
                         source="confit-lsp",
@@ -158,7 +154,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
 
                     assert isinstance(key, str)
 
-                    element = data.path2element.get((*path, key))
+                    element = view.path2element.get((*path, key))
 
                     if element is not None:
                         diagnostics.append(
@@ -170,7 +166,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                             )
                         )
                     else:
-                        element = data.path2element[(*path, "factory")]
+                        element = view.path2element[(*path, "factory")]
                         diagnostics.append(
                             Diagnostic(
                                 range=element.key,
@@ -197,7 +193,7 @@ async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
     """Handle document open event"""
     doc = ls.workspace.get_text_document(params.text_document.uri)
 
-    if doc.uri.endswith("config.toml"):
+    if doc.uri.endswith(".toml"):
         diagnostics = validate_config(doc)
         payload = PublishDiagnosticsParams(
             uri=doc.uri,
@@ -211,8 +207,8 @@ async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
     """Handle document save event"""
     doc = ls.workspace.get_text_document(params.text_document.uri)
 
-    # Validate config.toml
-    if doc.uri.endswith("config.toml"):
+    # Validate .toml
+    if doc.uri.endswith(".toml"):
         diagnostics = validate_config(doc)
         payload = PublishDiagnosticsParams(
             uri=doc.uri,
@@ -226,7 +222,7 @@ async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
 #     """Handle document change event"""
 #     doc = ls.workspace.get_text_document(params.text_document.uri)
 #
-#     if doc.uri.endswith("config.toml"):
+#     if doc.uri.endswith(".toml"):
 #         diagnostics = validate_config(doc)
 #         payload = PublishDiagnosticsParams(
 #             uri=doc.uri,
@@ -241,20 +237,20 @@ async def hover(ls: LanguageServer, params: HoverParams) -> Optional[Hover]:
 
     doc = ls.workspace.get_text_document(params.text_document.uri)
 
-    if not doc.uri.endswith("config.toml"):
+    if not doc.uri.endswith(".toml"):
         return None
 
     try:
-        data = ConfigurationView.from_source(doc.source)
+        view = ConfigurationView.from_source(doc.source)
 
         cursor = params.position
-        element = data.position2element(cursor)
+        element = view.get_element_from_position(cursor)
 
         if element is None:
             return None
 
         *path, key = element.path
-        root = data.get_object(path)
+        root = view.get_object(path)
 
         factory_name = root.get("factory")
 
@@ -306,20 +302,20 @@ async def definition(
 ) -> Optional[Location]:
     doc = ls.workspace.get_text_document(params.text_document.uri)
 
-    if not doc.uri.endswith("config.toml"):
+    if not doc.uri.endswith(".toml"):
         return None
 
     try:
-        data = ConfigurationView.from_source(doc.source)
+        view = ConfigurationView.from_source(doc.source)
 
         cursor = params.position
-        element = data.position2element(cursor)
+        element = view.get_element_from_position(cursor)
 
         if element is None:
             return None
 
         *path, _ = element.path
-        root = data.get_object(path)
+        root = view.get_object(path)
 
         factory_name = root.get("factory")
 
@@ -349,14 +345,14 @@ async def completion(
     """Provide auto-completion for element values"""
     doc = ls.workspace.get_text_document(params.text_document.uri)
 
-    if not doc.uri.endswith("config.toml"):
+    if not doc.uri.endswith(".toml"):
         return None
 
     try:
-        data = ConfigurationView.from_source(doc.source)
+        view = ConfigurationView.from_source(doc.source)
 
         cursor = params.position
-        element = data.position2element(cursor)
+        element = view.get_element_from_position(cursor)
 
         if element is None:
             return None

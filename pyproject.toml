@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-confit-lsp = "confit_lsp.main:run"
+confit-lsp = "confit_lsp.lsp.main:run"
 
 [project.entry-points.'confit']
 subtract = "confit_lsp.factories"
