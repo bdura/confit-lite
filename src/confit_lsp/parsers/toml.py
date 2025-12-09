@@ -33,22 +33,24 @@ basic_string = (
 )
 literal_string = squote >> regex(r"[^']+") << squote
 
-toml_string = basic_string | literal_string
+toml_string = (basic_string | literal_string).desc("string")
 
 bare_key = regex(r"[A-Za-z0-9_-]+")
 quoted_key = toml_string
-key = bare_key | quoted_key
+key = (bare_key | quoted_key).desc("key")
 
-dotted_keys = key.sep_by(whitespace >> dot << whitespace).map(tuple)
+dotted_keys = key.sep_by(whitespace >> dot << whitespace).map(tuple).desc("dotted-key")
 
-table_title = lbracket >> dotted_keys << rbracket
+table_title = (lbracket >> dotted_keys << rbracket).desc("title")
 
 line_remainder = regex(r".*")
 
-value = toml_string | regex(r"[^\s]+")
+value = (toml_string | regex(r"[^\s]+")).desc("value")
 
-key_value_pair = dotted_keys.span().combine(
-    whitespace >> equal >> whitespace >> value.span()
+key_value_pair = (
+    dotted_keys.span()
+    .combine(whitespace >> equal >> whitespace >> value.span())
+    .desc("key-value")
 )
 
 element = (
@@ -59,7 +61,7 @@ element = (
     )
     << line_remainder
     << string("\n")
-)
+).desc("element")
 
 
 def parse_toml(content: str) -> Iterator[Element]:

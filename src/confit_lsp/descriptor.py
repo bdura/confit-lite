@@ -1,93 +1,47 @@
 from dataclasses import dataclass
 from functools import cached_property
-from itertools import chain
-from pathlib import Path
-from typing import Any, NewType, Self, assert_never
-from persil.result import Err
+from typing import Any, Iterator, Self, Sequence
 import rtoml
 
-from persil import string, regex, whitespace
 
-key = regex(r"[a-zA-z_-]\w*")
-path = key.sep_by(string("."), min=1)
-
-left_bracket = string("[")
-right_bracket = string("]")
-
-table = left_bracket >> path << right_bracket
-
-line_remainder = regex(".*")
-
-newline = string("\n")
-comment = string("#") >> line_remainder
-
-discarded = newline | comment
-
-parser = whitespace.optional() >> (
-    table.map(lambda path: ("title", path)).desc("table title")
-    | (path.map(lambda path: ("element", path)) << line_remainder).desc("key")
-    | discarded.result(("discarded", None)).desc("discarded")
-)
-
-
-LineNumber = NewType("LineNumber", int)
-FullKey = tuple[str, str]
-
-TomlDict = dict[str, Any]
+from confit_lsp.parsers.toml import parse_toml
+from confit_lsp.parsers.types import Element, ElementPath
 
 
 @dataclass
-class Data:
-    data: TomlDict
-    path2line: dict[FullKey, LineNumber]
+class ConfigurationView:
+    data: dict[str, Any]
+    """The actual data."""
 
-    def get_root(self, path: str) -> TomlDict:
+    elements: list[Element]
+    """Key-value ranges for look-up."""
+
+    @cached_property
+    def path2element(self) -> dict[ElementPath, Element]:
+        return {element.path: element for element in self.elements}
+
+    def get_value(self, path: Sequence[str]) -> Any:
+        return self.get_object(path[:-1])[path[-1]]
+
+    def get_object(
+        self,
+        path: Sequence[str],
+    ) -> dict[str, Any]:
+        """Get the underlying object at a given path by recursively querying keys."""
+
         d = self.data
 
-        for key in path.split("."):
+        for key in path:
             d = d[key]
 
         return d
 
-    @cached_property
-    def line2path(self) -> dict[LineNumber, FullKey]:
-        return {line_number: path for path, line_number in self.path2line.items()}
-
-    @classmethod
-    def from_file(cls, filepath: Path) -> Self:
-        content = filepath.read_text()
-        return cls.from_source(content)
-
     @classmethod
     def from_source(cls, content: str) -> Self:
         data = rtoml.loads(content)
-
-        path2line = dict[FullKey, LineNumber]()
-
-        current_table = list[str]()
-        line_number = 0
-
-        while True:
-            try:
-                result, content = parser.parse_partial(content)
-
-                if result[0] == "discarded":
-                    continue
-                elif result[0] == "title":
-                    current_table = result[1]
-                elif result[0] == "element":
-                    [*table, key] = chain(current_table, result[1])
-                    path = (".".join(table), key)
-                    path2line[path] = LineNumber(line_number)
-                else:
-                    assert_never(result)
-
-            except Err:
-                break
-
-            line_number += 1
+        elements = list(parse_toml(content))
 
         return cls(
             data=data,
-            path2line=path2line,
+            elements=elements,
         )

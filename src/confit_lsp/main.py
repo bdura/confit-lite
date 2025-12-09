@@ -42,7 +42,8 @@ from lsprotocol.types import (
 )
 from pygls.workspace import TextDocument
 
-from confit_lsp.descriptor import Data, LineNumber
+from confit_lsp.descriptor import ConfigurationView
+from confit_lsp.parsers.types import Element, ElementPath
 from confit_lsp.registry import REGISTRY
 from confit_lsp.capabilities import FunctionDescription
 
@@ -60,57 +61,30 @@ logger.info("LSP server started")
 server = LanguageServer("confit-lsp", "v0.1")
 
 
-def get_key_value_offsets(
-    line: str,
-    key: str,
-) -> tuple[
-    tuple[int, int],
-    tuple[int, int],
-]:
-    start_char = line.find(key)
-
-    key_offset = start_char, start_char + len(key)
-
-    start_char = line.find("=") + 1
-    start_char += len(line[start_char:]) - len(line[start_char:].lstrip())
-    end_char = len(line.rstrip())
-
-    value_offset = start_char, end_char
-
-    return key_offset, value_offset
-
-
 def validate_config(doc: TextDocument) -> list[Diagnostic]:
     """Validate config.toml and return diagnostics"""
     content = doc.source
 
     diagnostics = []
-    lines = content.split("\n")
 
     try:
-        data = Data.from_source(content)
+        data = ConfigurationView.from_source(content)
 
-        factory_paths = dict[str, FunctionDescription]()
+        factories = dict[ElementPath, FunctionDescription]()
 
-        for (path, key), line_number in data.path2line.items():
+        for element in data.elements:
+            *path, key = element.path
+
             if key != "factory":
                 continue
 
-            root = data.get_root(path)
+            root = data.get_object(path)
             factory_name = root[key]
-
-            line = lines[line_number]
-            _, (start_char, end_char) = get_key_value_offsets(line, key)
-
-            element_range = Range(
-                start=Position(line=line_number, character=start_char + 1),
-                end=Position(line=line_number, character=end_char - 1),
-            )
 
             if not isinstance(factory_name, str):
                 diagnostics.append(
                     Diagnostic(
-                        range=element_range,
+                        range=element.value,
                         message=f"Element value must be a string, got {type(factory_name).__name__}",
                         severity=DiagnosticSeverity.Error,
                         source="confit-lsp",
@@ -121,7 +95,7 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
             if factory_name not in REGISTRY:
                 diagnostics.append(
                     Diagnostic(
-                        range=element_range,
+                        range=element.value,
                         message=f"Element '{factory_name}' not found in the registry.",
                         severity=DiagnosticSeverity.Error,
                         source="confit-lsp",
@@ -129,40 +103,53 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                 )
                 continue
 
-            factory_paths[path] = FunctionDescription.from_function(
+            factories[tuple(path)] = FunctionDescription.from_function(
                 factory_name,
                 REGISTRY[factory_name],
             )
 
-        for (path, key), line_number in data.path2line.items():
+        for element in data.elements:
+            path = element.path
+            key = path[-1]
+
             if key == "factory":
                 continue
 
-            element = factory_paths.get(path)
-            if element is None:
+            factory = factories.get(path)
+            if factory is None:
                 continue
 
-            line = lines[line_number]
-            (start_char, end_char), _ = get_key_value_offsets(line, key)
-            element_range = Range(
-                start=Position(line=line_number, character=start_char),
-                end=Position(line=line_number, character=end_char),
-            )
-
-            if key not in element.input_model.model_fields:
+            if key not in factory.input_model.model_fields:
                 diagnostics.append(
                     Diagnostic(
-                        range=element_range,
-                        message=f"Argument `{key}` does not exist for factory function `{element.name}`.",
+                        range=element.key,
+                        message=f"Argument `{key}` does not exist for factory function `{factory.name}`.",
                         severity=DiagnosticSeverity.Error,
                         source="confit-lsp",
                     )
                 )
 
-        for path, element in factory_paths.items():
-            root = data.get_root(path)
+        for path, factory in factories.items():
+            root = data.get_object(path).copy()
+
+            extra_keys = (
+                set(root.keys())
+                - {"factory"}
+                - set(factory.input_model.model_fields.keys())
+            )
+
+            for key in extra_keys:
+                diagnostics.append(
+                    Diagnostic(
+                        range=data.path2element[(*path, key)].key,
+                        message=f"Argument `{key}` is not recognized by `{factory.name}` and will be ignored.",
+                        severity=DiagnosticSeverity.Warning,
+                        source="confit-lsp",
+                    )
+                )
+
             try:
-                element.input_model.model_validate(root)
+                factory.input_model.model_validate(root)
             except ValidationError as e:
                 for error in e.errors():
                     msg = error["msg"]
@@ -171,40 +158,23 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
 
                     assert isinstance(key, str)
 
-                    line_number = data.path2line.get((path, key))
+                    element = data.path2element.get((*path, key))
 
-                    if line_number is None:
-                        line_number = data.path2line[(path, "factory")]
-                        line = lines[line_number]
-                        (start_char, end_char), _ = get_key_value_offsets(
-                            line, "factory"
-                        )
-                        element_range = Range(
-                            start=Position(line=line_number, character=start_char),
-                            end=Position(line=line_number, character=end_char),
-                        )
-
+                    if element is not None:
                         diagnostics.append(
                             Diagnostic(
-                                range=element_range,
-                                message=f"Argument `{key}` is missing.\n{msg}",
+                                range=element.value,
+                                message=f"Argument `{key}` has incompatible type.\n{msg}",
                                 severity=DiagnosticSeverity.Error,
                                 source="confit-lsp",
                             )
                         )
-
                     else:
-                        line = lines[line_number]
-                        _, (start_char, end_char) = get_key_value_offsets(line, key)
-                        element_range = Range(
-                            start=Position(line=line_number, character=start_char),
-                            end=Position(line=line_number, character=end_char),
-                        )
-
+                        element = data.path2element[(*path, "factory")]
                         diagnostics.append(
                             Diagnostic(
-                                range=element_range,
-                                message=f"Argument `{key}` has incompatible type.\n{msg}",
+                                range=element.key,
+                                message=f"Argument `{key}` is missing.\n{msg}",
                                 severity=DiagnosticSeverity.Error,
                                 source="confit-lsp",
                             )
@@ -251,32 +221,33 @@ async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
         ls.text_document_publish_diagnostics(payload)
 
 
-@server.feature(TEXT_DOCUMENT_DID_CHANGE)
-async def did_change(ls: LanguageServer, params: DidChangeTextDocumentParams):
-    """Handle document change event"""
-    doc = ls.workspace.get_text_document(params.text_document.uri)
+# @server.feature(TEXT_DOCUMENT_DID_CHANGE)
+# async def did_change(ls: LanguageServer, params: DidChangeTextDocumentParams):
+#     """Handle document change event"""
+#     doc = ls.workspace.get_text_document(params.text_document.uri)
+#
+#     if doc.uri.endswith("config.toml"):
+#         diagnostics = validate_config(doc)
+#         payload = PublishDiagnosticsParams(
+#             uri=doc.uri,
+#             diagnostics=diagnostics,
+#         )
+#         ls.text_document_publish_diagnostics(payload)
 
-    if doc.uri.endswith("config.toml"):
-        diagnostics = validate_config(doc)
-        payload = PublishDiagnosticsParams(
-            uri=doc.uri,
-            diagnostics=diagnostics,
-        )
-        ls.text_document_publish_diagnostics(payload)
 
-
-@server.feature(TEXT_DOCUMENT_HOVER)
+# @server.feature(TEXT_DOCUMENT_HOVER)
 async def hover(ls: LanguageServer, params: HoverParams) -> Optional[Hover]:
     """Provide hover information for factories"""
 
     doc = ls.workspace.get_text_document(params.text_document.uri)
-    data = Data.from_source(doc.source)
 
     if not doc.uri.endswith("config.toml"):
         return None
 
     try:
-        cursor_line = params.position.line
+        data = ConfigurationView.from_source(doc.source)
+
+        cursor = params.position
 
         result = data.line2path.get(LineNumber(cursor_line))
 
@@ -330,7 +301,7 @@ async def hover(ls: LanguageServer, params: HoverParams) -> Optional[Hover]:
     return None
 
 
-@server.feature(TEXT_DOCUMENT_DEFINITION)
+# @server.feature(TEXT_DOCUMENT_DEFINITION)
 async def definition(
     ls: LanguageServer, params: DefinitionParams
 ) -> Optional[Location]:
@@ -432,7 +403,7 @@ async def completion(
     return None
 
 
-@server.feature(TEXT_DOCUMENT_INLAY_HINT)
+# @server.feature(TEXT_DOCUMENT_INLAY_HINT)
 def inlay_hints(params: InlayHintParams):
     items = []
     document_uri = params.text_document.uri

@@ -3,6 +3,9 @@ from typing import Iterator, Protocol
 from lsprotocol.types import Range
 
 
+ElementPath = tuple[str, ...]
+
+
 @dataclass
 class Element:
     """A configuration element, with key/value location - for LSP purposes.
@@ -10,7 +13,7 @@ class Element:
     Defined by the path within the underlying dictionary, and the key and value ranges.
     """
 
-    path: tuple[str, ...]
+    path: ElementPath
 
     key: Range
     value: Range
