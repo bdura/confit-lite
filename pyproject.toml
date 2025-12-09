@@ -1,24 +1,19 @@
 [project]
-name = "confit-lsp"
+name = "confit-lite"
 version = "0.1.0"
-description = "Add your description here"
+description = "A light confit implementation with a built-in LSP!"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
-  "confit>=0.10.1",
-  "persil",
-  "pydantic>=2.12.5",
-  "pygls>=2.0.0",
-  "rtoml>=0.13.0",
-  "tomlkit>=0.13.3",
-  "tomlkit-extras>=0.2.0",
-]
+dependencies = ["confit>=0.10.1", "pydantic>=2.12.5"]
+
+[project.optional-dependencies]
+lsp = ["persil", "pygls>=2.0.0", "rtoml>=0.13.0"]
 
 [project.scripts]
-confit-lsp = "confit_lsp.lsp.main:run"
+confit-lsp = "confit_lite.lsp.main:run"
 
 [project.entry-points.'confit']
-subtract = "confit_lsp.factories"
+factories = "confit_lite.factories"
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]

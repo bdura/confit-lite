@@ -37,7 +37,7 @@ from lsprotocol.types import (
     InitializeParams,
 )
 from pygls.workspace import TextDocument
-from confit_lsp.registry import REGISTRY
+from confit_lite.registry import REGISTRY
 
 from .descriptor import ConfigurationView
 from .parsers.types import Element, ElementPath
