@@ -2,6 +2,49 @@
 
 A bare-minimum registry implementation, with a built-in LSP!
 
+## Quickstart
+
+### The basics
+
+Install the package:
+
+```shell
+pip install git+https://github.com/bdura/confit-lite
+```
+
+You probably want to add the LSP to your development dependencies:
+
+```shell
+pip install git+https://github.com/bdura/confit-lite[lsp]
+```
+
+### Using the LSP
+
+On VSCode, you'll need to install a client. See [`clients/vscode/`](./clients/vscode/)
+for more information.
+
+### Adding factories
+
+This is all well and good, but you should be able to add your own factories -
+otherwise, what's the point.
+
+To allow this, `confit-lite` leverages [entrypoints]. In your project, you should add
+a `project.entry-points.confit` table that points to a module that imports
+all registered functions.
+
+```toml
+[project.entry-points.confit]
+factories = "confit_lite.factories"
+```
+
+You can also declare each factory individually, but... why would you?
+Just in case:
+
+```toml
+[project.entry-points.confit]
+add = "confit_lite.factories:add"
+```
+
 ## Roadmap
 
 In its current state, this project provides a basic, naive, flaky and inefficient
@@ -17,3 +60,5 @@ The goal is to make it gradually better.
 - [ ] Support for complex objects (check that factories are compatible)
 - [ ] "Efficient" reading/parsing strategy
 - [ ] Serious parser
+
+[entrypoints]: https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/#using-package-metadata
