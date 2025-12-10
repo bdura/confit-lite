@@ -21,6 +21,9 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             uv
+            nodejs
+            pnpm
+            typescript
           ];
         };
       }
