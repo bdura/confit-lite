@@ -2,6 +2,8 @@
 
 Minimal LSP for [Confit].
 
+You can find a pre-compiled version [here][vsix].
+
 Note that you need to install the LSP itself separately:
 
 ```shell
@@ -35,3 +37,4 @@ uv sync --all-extras
 [Confit]: https://aphp.github.io/confit/latest/
 [`vsce`]: https://code.visualstudio.com/api/working-with-extensions/publishing-extension
 [`confit-lite`]: https://github.com/bdura/confit-lite
+[vsix]: https://github.com/bdura/confit-lite/tree/artifacts
