@@ -1,5 +1,10 @@
 [test.element]
-factory = "something-interesting"
-url = "https://test"
-retries = "two"
-a = 20
+factory = "test"
+a = 0
+b = "$targets.some-super-value"
+c = true
+d = 9
+
+
+[targets]
+some-super-value = 42

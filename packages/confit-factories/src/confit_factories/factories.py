@@ -7,10 +7,11 @@ from confit_lite.registry import register
 @register("test")
 def test(
     a: float,
-    other: int,
+    b: int,
+    c: bool,
 ) -> float:
-    """Add two numbers together."""
-    return a + other
+    """Test factory"""
+    return a + b + c
 
 
 @register("add")
