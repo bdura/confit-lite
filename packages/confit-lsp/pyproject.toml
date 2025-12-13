@@ -1,0 +1,18 @@
+[project]
+name = "confit-lsp"
+version = "0.1.0"
+description = "An LSP for confit-lite."
+readme = "README.md"
+authors = [{ name = "Basile Dura", email = "basile@bdura.me" }]
+requires-python = ">=3.13"
+dependencies = ["persil", "pygls>=2.0.0", "rtoml>=0.13.0", "confit-lite"]
+
+[project.scripts]
+confit-lsp = "confit_lsp.main:run"
+
+[tool.uv.sources]
+confit-lite = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.12,<0.10.0"]
+build-backend = "uv_build"

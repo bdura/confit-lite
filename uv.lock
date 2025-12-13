@@ -2,6 +2,13 @@ version = 1
 revision = 3
 requires-python = ">=3.13"
 
+[manifest]
+members = [
+    "confit-factories",
+    "confit-lite",
+    "confit-lsp",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -82,6 +89,17 @@ wheels = [
 ]
 
 [[package]]
+name = "confit-factories"
+version = "0.1.0"
+source = { editable = "packages/confit-factories" }
+dependencies = [
+    { name = "confit-lite" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "confit-lite", editable = "." }]
+
+[[package]]
 name = "confit-lite"
 version = "0.1.0"
 source = { editable = "." }
@@ -91,7 +109,28 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+factoris = [
+    { name = "confit-factories" },
+]
 lsp = [
+    { name = "confit-lsp" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "confit", specifier = ">=0.10.1" },
+    { name = "confit-factories", marker = "extra == 'factoris'", editable = "packages/confit-factories" },
+    { name = "confit-lsp", marker = "extra == 'lsp'", editable = "packages/confit-lsp" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+]
+provides-extras = ["lsp", "factoris"]
+
+[[package]]
+name = "confit-lsp"
+version = "0.1.0"
+source = { editable = "packages/confit-lsp" }
+dependencies = [
+    { name = "confit-lite" },
     { name = "persil" },
     { name = "pygls" },
     { name = "rtoml" },
@@ -99,13 +138,11 @@ lsp = [
 
 [package.metadata]
 requires-dist = [
-    { name = "confit", specifier = ">=0.10.1" },
-    { name = "persil", marker = "extra == 'lsp'", git = "https://github.com/bdura/persil" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pygls", marker = "extra == 'lsp'", specifier = ">=2.0.0" },
-    { name = "rtoml", marker = "extra == 'lsp'", specifier = ">=0.13.0" },
+    { name = "confit-lite", editable = "." },
+    { name = "persil", git = "https://github.com/bdura/persil" },
+    { name = "pygls", specifier = ">=2.0.0" },
+    { name = "rtoml", specifier = ">=0.13.0" },
 ]
-provides-extras = ["lsp"]
 
 [[package]]
 name = "lark"

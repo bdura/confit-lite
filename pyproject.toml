@@ -7,13 +7,8 @@ requires-python = ">=3.13"
 dependencies = ["confit>=0.10.1", "pydantic>=2.12.5"]
 
 [project.optional-dependencies]
-lsp = ["persil", "pygls>=2.0.0", "rtoml>=0.13.0"]
-
-[project.scripts]
-confit-lsp = "confit_lite.lsp.main:run"
-
-[project.entry-points.'confit']
-factories = "confit_lite.factories"
+lsp = ["confit-lsp"]
+factoris = ["confit-factories"]
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]
@@ -21,3 +16,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.uv.sources]
 persil = { git = "https://github.com/bdura/persil" }
+confit-lsp = { workspace = true }
+confit-factories = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]

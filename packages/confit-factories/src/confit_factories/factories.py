@@ -1,7 +1,16 @@
 """Built-in factories."""
 
 from pydantic import HttpUrl
-from .registry import register
+from confit_lite.registry import register
+
+
+@register("test")
+def test(
+    a: float,
+    other: int,
+) -> float:
+    """Add two numbers together."""
+    return a + other
 
 
 @register("add")
