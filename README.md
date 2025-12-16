@@ -28,13 +28,15 @@ for more information.
 This is all well and good, but you should be able to add your own factories -
 otherwise, what's the point.
 
-To allow this, `confit-lite` leverages [entrypoints]. In your project, you should add
-a `project.entry-points.confit` table that points to a module that imports
-all registered functions.
+To allow this, `confit-lite` leverages [entrypoints]. In your project,
+you should add a `project.entry-points.confit` table that points to
+a module that imports all registered functions.
+
+See the [example]:
 
 ```toml
 [project.entry-points.confit]
-factories = "confit_lite.factories"
+factories = "confit_factories.factories"
 ```
 
 You can also declare each factory individually, but... why would you?
@@ -42,13 +44,14 @@ Just in case:
 
 ```toml
 [project.entry-points.confit]
-add = "confit_lite.factories:add"
+add = "confit_factories.factories:add"
 ```
 
 ## Roadmap
 
 In its current state, this project provides a basic, naive, flaky and inefficient
 LSP implementation that only works in simple cases.
+
 The goal is to make it gradually better.
 
 - [x] Inlay hints
@@ -56,9 +59,20 @@ The goal is to make it gradually better.
 - [x] Missing key detections
 - [x] Value type-checking with Pydantic
 - [x] Go to definition
-- [ ] VSCode extension
-- [ ] Support for complex objects (check that factories are compatible)
+- [x] [VSCode extension]
+- [ ] Handle references (type-checking & go to definition)
+- [ ] Support complex objects (check that factories are compatible)
+- [ ] Allow LSP-aware lazy defaults
+- [ ] Serialization capabilities
+- [ ] Highlight references
 - [ ] "Efficient" reading/parsing strategy
 - [ ] Serious parser
+
+<!-- Local links -->
+
+[VSCode extension]: ./clients/vscode/
+[example]: ./packages/confit-factories/pyproject.toml
+
+<!-- Global links -->
 
 [entrypoints]: https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/#using-package-metadata
