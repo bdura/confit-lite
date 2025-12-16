@@ -60,6 +60,19 @@ class ConfigurationView:
     def path2element(self) -> dict[ElementPath, Element]:
         return {element.path: element for element in self.elements}
 
+    @cached_property
+    def factories(self) -> list[Element]:
+        result = list[Element]()
+
+        for element in self.elements:
+            *_, key = element.path
+            if key != "factory":
+                continue
+
+            result.append(element)
+
+        return result
+
     def get_element_from_position(self, position: Position) -> Element | None:
         for element in self.elements:
             if element.key.start <= position < element.value.end:
