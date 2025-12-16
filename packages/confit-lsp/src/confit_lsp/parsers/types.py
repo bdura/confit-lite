@@ -14,6 +14,7 @@ class Element:
     """
 
     path: ElementPath
+    """Full path to the element."""
 
     key: Range
     value: Range

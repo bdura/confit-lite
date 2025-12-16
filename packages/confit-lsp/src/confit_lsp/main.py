@@ -5,7 +5,7 @@ TOML LSP Server with element validation and hover support.
 import logging
 from typing import Optional
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from pygls.lsp.server import LanguageServer
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
@@ -104,36 +104,18 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                 REGISTRY[factory_name],
             )
 
-        for element in view.elements:
-            path = element.path
-            key = path[-1]
-
-            if key == "factory":
-                continue
-
-            factory = factories.get(path)
-            if factory is None:
-                continue
-
-            if key not in factory.input_model.model_fields:
-                diagnostics.append(
-                    Diagnostic(
-                        range=element.key,
-                        message=f"Argument `{key}` does not exist for factory function `{factory.name}`.",
-                        severity=DiagnosticSeverity.Error,
-                        source="confit-lsp",
-                    )
-                )
-
         for path, factory in factories.items():
             root = view.get_object(path).copy()
+            root_keys = set(root.keys()) - {"factory"}
 
-            extra_keys = (
-                set(root.keys())
-                - {"factory"}
-                - set(factory.input_model.model_fields.keys())
+            model_keys = set(factory.input_model.model_fields.keys())
+            required_model_keys = set(
+                key
+                for key, info in factory.input_model.model_fields.items()
+                if info.default is not None or info.default_factory is not None
             )
 
+            extra_keys = root_keys - model_keys
             for key in extra_keys:
                 diagnostics.append(
                     Diagnostic(
@@ -144,33 +126,39 @@ def validate_config(doc: TextDocument) -> list[Diagnostic]:
                     )
                 )
 
-            try:
-                factory.input_model.model_validate(root)
-            except ValidationError as e:
-                for error in e.errors():
-                    msg = error["msg"]
+            factory_element = view.path2element[(*path, "factory")]
+            missing_keys = required_model_keys - root_keys
+            for key in missing_keys:
+                diagnostics.append(
+                    Diagnostic(
+                        range=factory_element.key,
+                        message=f"Argument `{key}` is missing.",
+                        severity=DiagnosticSeverity.Error,
+                        source="confit-lsp",
+                    )
+                )
 
-                    (key,) = error["loc"]
+            for key in root_keys & model_keys:
+                info = factory.input_model.model_fields[key]
+                value = root[key]
 
-                    assert isinstance(key, str)
+                adapter = TypeAdapter(info.annotation)
 
-                    element = view.path2element.get((*path, key))
+                total_path = (*path, key)
+                if total_path in view.references:
+                    target = view.references[total_path].path
+                    value = view.get_value(target)
 
-                    if element is not None:
+                try:
+                    adapter.validate_python(value)
+                except ValidationError as e:
+                    element = view.path2element[total_path]
+                    for error in e.errors():
+                        msg = error["msg"]
                         diagnostics.append(
                             Diagnostic(
                                 range=element.value,
                                 message=f"Argument `{key}` has incompatible type.\n{msg}",
-                                severity=DiagnosticSeverity.Error,
-                                source="confit-lsp",
-                            )
-                        )
-                    else:
-                        element = view.path2element[(*path, "factory")]
-                        diagnostics.append(
-                            Diagnostic(
-                                range=element.key,
-                                message=f"Argument `{key}` is missing.\n{msg}",
                                 severity=DiagnosticSeverity.Error,
                                 source="confit-lsp",
                             )
@@ -314,7 +302,16 @@ async def definition(
         if element is None:
             return None
 
-        *path, _ = element.path
+        if element.path in view.references:
+            target = view.references[element.path]
+            return Location(uri=doc.uri, range=target.value)
+
+        *path, key = element.path
+
+        if key != "factory":
+            # TODO: go to the definition of the argument
+            return None
+
         root = view.get_object(path)
 
         factory_name = root.get("factory")

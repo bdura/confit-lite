@@ -4,6 +4,8 @@ from typing import Any, Self, Sequence
 from lsprotocol.types import Position
 import rtoml
 
+from collections import deque
+
 
 from .parsers import parse_toml
 from .parsers import Element, ElementPath
@@ -16,6 +18,43 @@ class ConfigurationView:
 
     elements: list[Element]
     """Key-value ranges for look-up."""
+
+    @cached_property
+    def references(self) -> dict[ElementPath, Element]:
+        """In-document references."""
+        path2path = dict[ElementPath, ElementPath]()
+
+        to_visit = deque[tuple[ElementPath, dict[str, Any]]]()
+        to_visit.append(((), self.data))
+
+        while len(to_visit) > 0:
+            path, data = to_visit.popleft()
+
+            for key, value in data.items():
+                new_path = (*path, key)
+                if isinstance(value, dict):
+                    to_visit.append((new_path, value))
+
+                if not isinstance(value, str):
+                    continue
+
+                if not value.startswith("$"):
+                    continue
+
+                path2path[new_path] = tuple(value[1:].split("."))
+
+        result = dict[ElementPath, Element]()
+
+        for path, target in path2path.items():
+            elements = [
+                element
+                for element in self.elements
+                if element.path[: len(target)] == target
+            ]
+            if elements:
+                result[path] = elements[0]
+
+        return result
 
     @cached_property
     def path2element(self) -> dict[ElementPath, Element]:
