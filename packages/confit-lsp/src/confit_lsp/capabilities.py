@@ -13,6 +13,7 @@ class FunctionDescription:
     name: str
     location: Location
     input_model: type[BaseModel]
+    return_type: type
     docstring: str | None
 
     @classmethod
@@ -22,7 +23,7 @@ class FunctionDescription:
         func: Callable,
     ) -> Self:
         location = get_function_location(func)
-        input_model = get_pydantic_input_model(func)
+        input_model, return_type = get_pydantic_input_model(func)
         docstring = func.__doc__
 
         return cls(
@@ -30,4 +31,5 @@ class FunctionDescription:
             docstring=docstring,
             location=location,
             input_model=input_model,
+            return_type=return_type,
         )

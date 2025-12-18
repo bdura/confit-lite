@@ -1,11 +1,11 @@
 import inspect
 from typing import Callable, Any, get_type_hints
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, ConfigDict, create_model
 
 
 def get_pydantic_input_model(
     func: Callable,
-) -> type[BaseModel]:
+) -> tuple[type[BaseModel], Any]:
     """
     Convert a function signature to a Pydantic model for input validation.
 
@@ -37,5 +37,10 @@ def get_pydantic_input_model(
             # Optional field with default
             fields[param_name] = (param_type, param.default)
 
-    # Create and return the Pydantic model
-    return create_model("InputModel", **fields)
+    model = create_model(
+        "InputModel",
+        **fields,
+        __config__=ConfigDict(arbitrary_types_allowed=True),
+    )
+
+    return model, type_hints.get("return")

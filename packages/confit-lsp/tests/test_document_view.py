@@ -16,4 +16,7 @@ b = 42
 
 def test_factories():
     view = ConfigurationView.from_source(TOML)
-    assert view.factories == {("section",): "add", ("section", "b"): "add"}
+    assert {e.path for e in view.factories} == {
+        ("section", "factory"),
+        ("section", "b", "factory"),
+    }
