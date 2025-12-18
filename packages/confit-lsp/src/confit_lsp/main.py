@@ -172,7 +172,6 @@ def validate_config(view: ConfigurationView) -> list[Diagnostic]:
             target = view.references.get(total_path)
 
             if target is not None:
-                logger.info(f"1 - {total_path}")
                 element = view.path2element[total_path]
                 try:
                     view.get_value(target)
@@ -212,7 +211,6 @@ def validate_config(view: ConfigurationView) -> list[Diagnostic]:
                 adapter = TypeAdapter(info.annotation)
                 adapter.validate_python(value)
             except ValidationError as e:
-                logger.info(f"2 - {total_path}")
                 element = view.path2element[total_path]
                 for error in e.errors():
                     msg = error["msg"]
@@ -359,9 +357,15 @@ async def definition(
 
     if element.path in view.references:
         target = view.references[element.path]
-        logger.info(f"3 - {target}")
-        element = view.path2element.get(target)
-        return element and Location(uri=doc.uri, range=element.value)
+        elements = [
+            element
+            for element in view.elements
+            if target == element.path[: len(target)]
+        ]
+
+        if elements:
+            return Location(uri=doc.uri, range=elements[0].key)
+        return None
 
     *path, key = element.path
 
