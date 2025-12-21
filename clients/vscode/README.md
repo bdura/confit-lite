@@ -1,10 +1,13 @@
-# confit-lsp
+# Confit LSP
 
-Minimal LSP for [Confit].
+LSP client for the [Confit] configuration system ([`confit-lite`] at the moment).
 
-You can find a pre-compiled version [here][vsix].
+![Example diagnostics](./assets/diagnostics.png)
 
-Note that you need to install the LSP itself separately:
+## Getting started
+
+This extension does not ship with the [LSP][`confit-lite`] itself,
+you need to install it separately:
 
 ```shell
 pip install git+https://github.com/bdura/confit-lite[lsp]
@@ -12,29 +15,5 @@ pip install git+https://github.com/bdura/confit-lite[lsp]
 
 See the [`confit-lite`] docs for more information.
 
-## Manual installation
-
-You'll need to install Node and [`vsce`] to compile the extension using:
-
-```shell
-cd clients/vscode
-npm i
-vsce package
-```
-
-Then, install the extension from the `VSIX` artifact. From the VSCode
-Extensions panel: Settings > Install from VSIX.
-
-Open `config.toml`, you should get diagnostics as long as you have `confit-lsp`
-installed on your Python environment.
-
-Note that the LSP requires `confit-lsp` to be installed:
-
-```shell
-uv sync --all-extras
-```
-
 [Confit]: https://aphp.github.io/confit/latest/
-[`vsce`]: https://code.visualstudio.com/api/working-with-extensions/publishing-extension
 [`confit-lite`]: https://github.com/bdura/confit-lite
-[vsix]: https://github.com/bdura/confit-lite/tree/artifacts

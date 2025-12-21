@@ -1,17 +1,19 @@
 {
   "name": "confit-lsp",
-  "displayName": "confit-lsp",
-  "description": "LSP for Confit",
-  "version": "0.0.1",
-  "icon": "logo.png",
+  "displayName": "Confit LSP",
+  "description": "LSP client for the Confit configuration system",
+  "version": "0.0.2",
+  "publisher": "bdura",
+  "icon": "assets/logo.png",
   "engines": {
     "vscode": "^1.106.1"
   },
   "repository": {
-    "url": "https://github.com/bdura/confit-lsp"
+    "url": "https://github.com/bdura/confit-lite"
   },
   "categories": [
-    "LSP"
+    "Programming Languages",
+    "Linters"
   ],
   "activationEvents": [
     "onLanguage:toml"

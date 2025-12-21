@@ -10,15 +10,14 @@ For the LSP to work, you will need two things:
 You just need to add `confit-lsp` to your development dependencies:
 
 ```shell
-uv add --group dev git+ssh://git@github.com/bdura/confit-lite.git#subdirectory=packages/confit-lsp
+uv add --group dev git+ssh://git@github.com/bdura/confit-lite.git[lsp]
 ```
 
 ## IDE configuration
 
 ### VSCode
 
-We provide a VSCode extension. Follow the [instructions]
-to compile it from source, or use [a pre-compiled one][vsix].
+We provide a [VSCode extension].
 
 Then, install the extension from the `VSIX` artifact.
 From the VSCode Extensions panel: Settings > Install from VSIX.
@@ -51,5 +50,4 @@ indent = { tab-width = 2, unit = "  " }
 language-servers = ["confit-lsp"]
 ```
 
-[instructions]: ./../../clients/vscode/
-[vsix]: https://github.com/bdura/confit-lite/tree/artifacts
+[VSCode extension]: https://marketplace.visualstudio.com/items?itemName=bdura.confit-lsp
