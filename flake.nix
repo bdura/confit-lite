@@ -22,7 +22,6 @@
           buildInputs = with pkgs; [
             uv
             nodejs
-            vsce
           ];
         };
       }

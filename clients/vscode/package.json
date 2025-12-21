@@ -21,6 +21,7 @@
   ],
   "main": "./dist/extension.js",
   "scripts": {
+    "vsce": "vsce",
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
     "watch": "webpack --watch",
@@ -37,6 +38,7 @@
     "@types/vscode": "^1.106.1",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
     "eslint": "^9.39.1",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
