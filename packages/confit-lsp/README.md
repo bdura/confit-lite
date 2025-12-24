@@ -19,9 +19,6 @@ uv add --group dev git+ssh://git@github.com/bdura/confit-lite.git[lsp]
 
 We provide a [VSCode extension].
 
-Then, install the extension from the `VSIX` artifact.
-From the VSCode Extensions panel: Settings > Install from VSIX.
-
 ### Neovim
 
 ```lua
