@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterator, Protocol
+from typing import Iterator, Literal, Protocol
 from lsprotocol.types import Range
 
 
@@ -16,11 +16,14 @@ class Element:
     path: ElementPath
     """Full path to the element."""
 
-    key: Range
-    value: Range
+    location: Range
+    """Location of the element."""
+
+
+Kind = Literal["key", "value"]
 
 
 class ConfigurationParser(Protocol):
     """The protocol configuration parsers should adhere to."""
 
-    def __call__(self, content: str) -> Iterator[Element]: ...
+    def __call__(self, content: str) -> Iterator[tuple[Kind, Element]]: ...

@@ -1,10 +1,11 @@
 [test.element]
 factory = "add"
 a = 0
-b = "$targets.some-super-value"
+b = "$targets.b"
 c = true
 d = 9
 
 
-[targets]
-some-super-value = "true"
+[targets.b]
+factory = "add"
+url = "http://test"

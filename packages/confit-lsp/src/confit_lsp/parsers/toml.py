@@ -1,9 +1,10 @@
 from typing import Iterator
 from persil import string, regex
 from persil.result import Ok
+from persil.utils import Span
 
 from .utils import range_from_persil, whitespace
-from .types import Element
+from .types import Element, Kind
 
 
 dquote = string('"')
@@ -41,7 +42,7 @@ key = (bare_key | quoted_key).desc("key")
 
 dotted_keys = key.sep_by(whitespace >> dot << whitespace).map(tuple).desc("dotted-key")
 
-table_title = (lbracket >> dotted_keys << rbracket).desc("title")
+table_title = (lbracket >> dotted_keys.span() << rbracket).desc("title")
 
 line_remainder = regex(r".*")
 
@@ -64,21 +65,30 @@ element = (
 ).desc("element")
 
 
-def parse_toml(content: str) -> Iterator[Element]:
+def parse_toml(content: str) -> Iterator[tuple[Kind, Element]]:
     index = 0
     root = tuple[str, ...]()
 
     while isinstance(result := element.wrapped_fn(content, index), Ok):
         index = result.index
 
-        if result.value[0] == "title":
-            root = result.value[1]
-        elif result.value[0] == "kv":
-            _, (key, value) = result.value
-            path = root + key.value
-
-            yield Element(
-                path=path,
-                key=range_from_persil(key),
-                value=range_from_persil(value),
-            )
+        match result.value:
+            case ("title", span):
+                root = span.value
+                yield "key", Element(path=root, location=range_from_persil(span))
+            case ("kv", (key, value)):
+                path = root + key.value
+                yield (
+                    "key",
+                    Element(
+                        path=path,
+                        location=range_from_persil(key),
+                    ),
+                )
+                yield (
+                    "value",
+                    Element(
+                        path=path,
+                        location=range_from_persil(value),
+                    ),
+                )

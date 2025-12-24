@@ -22,6 +22,7 @@
           buildInputs = with pkgs; [
             uv
             nodejs
+            watchexec
           ];
         };
       }

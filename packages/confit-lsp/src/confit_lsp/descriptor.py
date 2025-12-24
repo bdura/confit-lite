@@ -1,14 +1,17 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Self, Sequence
-from lsprotocol.types import Position
+import logging
+from typing import Any, Literal, Self, Sequence, assert_never
+from lsprotocol.types import Position, Range
 import rtoml
 
 from collections import deque
 
 
 from .parsers import parse_toml
-from .parsers import Element, ElementPath
+from .parsers import ElementPath
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -16,11 +19,26 @@ class ConfigurationView:
     data: dict[str, Any]
     """The actual data."""
 
-    elements: list[Element]
-    """Key-value ranges for look-up."""
+    keys: dict[ElementPath, Range]
+    """Key path to range lookup table."""
+
+    values: dict[ElementPath, Range]
+    """Value path to range lookup table."""
 
     @cached_property
-    def references(self) -> dict[ElementPath, Element]:
+    def path_range(self) -> list[tuple[ElementPath, Range]]:
+        result = list[tuple[ElementPath, Range]]()
+
+        for path, location in self.keys.items():
+            if (value := self.values.get(path)) is not None:
+                location = Range(start=location.start, end=value.end)
+                location.end = value.end
+            result.append((path, location))
+
+        return result
+
+    @cached_property
+    def references(self) -> dict[ElementPath, ElementPath]:
         """In-document references."""
         path2path = dict[ElementPath, ElementPath]()
 
@@ -43,30 +61,36 @@ class ConfigurationView:
 
                 path2path[new_path] = tuple(value[1:].split("."))
 
-        result = dict[ElementPath, Element]()
+        return path2path
 
-        for path, target in path2path.items():
-            elements = [
-                element
-                for element in self.elements
-                if element.path[: len(target)] == target
-            ]
-            if elements:
-                result[path] = elements[0]
+    def get_element_from_position(
+        self,
+        position: Position,
+    ) -> tuple[Literal["key", "value", "line"], ElementPath] | None:
+        for path, location in self.path_range:
+            if location.start <= position < location.end:
+                break
+        else:
+            return None
 
-        return result
+        key = self.keys[path]
 
-    @cached_property
-    def path2element(self) -> dict[ElementPath, Element]:
-        return {element.path: element for element in self.elements}
+        if key.start <= position < key.end:
+            return "key", path
 
-    def get_element_from_position(self, position: Position) -> Element | None:
-        for element in self.elements:
-            if element.key.start <= position < element.value.end:
-                return element
-        return None
+        value = self.values.get(path)
+        if value is None:
+            return "line", path
 
-    def get_value(self, path: Sequence[str]) -> Any:
+        if value.start <= position < value.end:
+            return "value", path
+
+        return "line", path
+
+    def get_value(
+        self,
+        path: Sequence[str],
+    ) -> Any:
         return self.get_object(path[:-1])[path[-1]]
 
     def get_object(
@@ -82,12 +106,34 @@ class ConfigurationView:
 
         return d
 
+    def factories(self) -> list[ElementPath]:
+        result = list[ElementPath]()
+        for path in self.keys.keys():
+            *path, key = path
+            if key == "factory":
+                result.append(tuple(path))
+        return result
+
     @classmethod
-    def from_source(cls, content: str) -> Self:
+    def from_source(
+        cls,
+        content: str,
+    ) -> Self:
         data = rtoml.loads(content)
-        elements = list(parse_toml(content))
+
+        keys = dict[ElementPath, Range]()
+        values = dict[ElementPath, Range]()
+
+        for kind, element in parse_toml(content):
+            if kind == "key":
+                keys[element.path] = element.location
+            elif kind == "value":
+                values[element.path] = element.location
+            else:
+                assert_never(kind)
 
         return cls(
             data=data,
-            elements=elements,
+            keys=keys,
+            values=values,
         )

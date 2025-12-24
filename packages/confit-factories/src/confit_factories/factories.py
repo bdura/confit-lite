@@ -32,13 +32,13 @@ def multiply(
     return a * b
 
 
-@register("something-interesting")
+@register("url-builder")
 def build_url(
     url: HttpUrl,
     retries: int = 0,
-) -> float:
+) -> str:
     """Build a URL.
 
     Just demonstrating how more complex type would work.
     """
-    ...
+    return ""

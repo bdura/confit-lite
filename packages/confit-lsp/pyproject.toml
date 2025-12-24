@@ -5,7 +5,14 @@ description = "An LSP for confit-lite."
 readme = "README.md"
 authors = [{ name = "Basile Dura", email = "basile@bdura.me" }]
 requires-python = ">=3.13"
-dependencies = ["persil", "pygls>=2.0.0", "rtoml>=0.13.0", "confit-lite"]
+dependencies = [
+    "persil",
+    "pygls>=2.0.0",
+    "rtoml>=0.13.0",
+    "confit-lite",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
 
 [project.scripts]
 confit-lsp = "confit_lsp.main:run"
