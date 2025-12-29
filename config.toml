@@ -1,5 +1,5 @@
 [test.element]
-factory = "add"
+factory2 = "add"
 a = 0
 b = "$targets.b"
 c = true
@@ -7,5 +7,5 @@ d = 9
 
 
 [targets.b]
-factory = "add"
+factory2 = "add"
 url = "http://test"

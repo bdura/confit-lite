@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
 import logging
-from typing import Any, Literal, Self, Sequence, assert_never
+from typing import Any, Container, Literal, Mapping, Self, Sequence, assert_never
 from lsprotocol.types import Position, Range
 import rtoml
 
@@ -106,12 +106,11 @@ class ConfigurationView:
 
         return d
 
-    def factories(self) -> list[ElementPath]:
+    def factories(self, markers: Container[str]) -> list[ElementPath]:
         result = list[ElementPath]()
         for path in self.keys.keys():
-            *path, key = path
-            if key == "factory":
-                result.append(tuple(path))
+            if path[-1] in markers:
+                result.append(path)
         return result
 
     @classmethod

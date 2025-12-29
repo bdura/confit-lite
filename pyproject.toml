@@ -27,3 +27,7 @@ members = ["packages/*"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.confit.factories]
+factory = "confit_lite.registry:REGISTRY.get"
+factory2 = "confit_lite.registry:REGISTRY.get"
