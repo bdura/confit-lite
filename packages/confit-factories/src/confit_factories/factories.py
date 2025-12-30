@@ -1,5 +1,6 @@
 """Built-in factories."""
 
+from typing import Iterator
 from pydantic import HttpUrl
 from confit_lite.registry import register
 
@@ -42,3 +43,22 @@ def build_url(
     Just demonstrating how more complex type would work.
     """
     return ""
+
+
+@register("counter")
+class Counter:
+    def __init__(
+        self,
+        start: int,
+        step: int,
+    ) -> None:
+        """Counter."""
+        self.count = start
+        self.step = step
+
+    def increment(self) -> None:
+        self.count += self.step
+
+    def __iter__(self) -> Iterator[int]:
+        yield self.count
+        self.increment()

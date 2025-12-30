@@ -62,6 +62,8 @@ The goal is to make it gradually better.
 - [x] Handle references (type-checking & go to definition)
 - [x] Basic support for complex objects
       (nested factories - check that factories generate correct type)
+- [x] Configurable registry using `[tool.confit.registries]`
+- [ ] Handle registered classes
 - [ ] Handle compatible types, not just identical types
 - [ ] Allow LSP-aware lazy defaults
 - [ ] Serialization capabilities

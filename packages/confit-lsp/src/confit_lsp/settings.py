@@ -63,13 +63,13 @@ class Settings(BaseSettings):
         pyproject_toml_table_header=("tool", "confit"),
     )
 
-    factories: dict[str, Registry] = dict()
+    registries: dict[str, Registry] = dict()
 
     def __getitem__(self, item) -> Registry:
-        return self.factories[item]
+        return self.registries[item]
 
     def get(self, item) -> Registry | None:
-        return self.factories.get(item)
+        return self.registries.get(item)
 
     @classmethod
     def settings_customise_sources(

@@ -68,7 +68,7 @@ class ConfitLanguageServer(LanguageServer):
 
     @property
     def registries(self) -> dict[str, Registry]:
-        return self.settings.factories
+        return self.settings.registries
 
     @cached_property
     def markers(self) -> set[str]:
@@ -87,7 +87,7 @@ class ConfitLanguageServer(LanguageServer):
             if h == source_hash:
                 return view
 
-        if not uri.endswith(".toml"):
+        if not uri.endswith("confit.toml"):
             return None
 
         view = ConfigurationView.from_source(text_document.source)
@@ -475,7 +475,7 @@ def inlay_hints(
     end = params.range.end
 
     factories = dict[ElementPath, FunctionDescription]()
-    for path in view.factories(ls.settings.factories.keys()):
+    for path in view.factories(ls.settings.registries.keys()):
         factory_name = view.get_value(path)
         factory = REGISTRY.get(factory_name)
 
