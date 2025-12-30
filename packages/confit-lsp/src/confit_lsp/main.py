@@ -101,10 +101,24 @@ class ConfitLanguageServer(LanguageServer):
 
         diagnostics = []
 
+        roots = dict[ElementPath, ElementPath]()
         factories = dict[ElementPath, FunctionDescription]()
 
         for path in view.factories(self.markers):
             location = view.values[path]
+
+            if path[:-1] in roots:
+                diagnostics.append(
+                    Diagnostic(
+                        range=view.keys[path],
+                        message="An object can reference a single factory element at most.",
+                        severity=DiagnosticSeverity.Error,
+                        source="confit-lsp",
+                    )
+                )
+            else:
+                roots[path[:-1]] = path
+
             factory_name = view.get_value(path)
 
             if not isinstance(factory_name, str):
@@ -193,7 +207,12 @@ class ConfitLanguageServer(LanguageServer):
                         continue
                     total_path = target
 
-                if (sub_factory_descriptor := factories.get(total_path)) is not None:
+                subfactory_path = roots.get(total_path)
+                if (
+                    subfactory_path is not None
+                    and (sub_factory_descriptor := factories.get(subfactory_path))
+                    is not None
+                ):
                     if sub_factory_descriptor.return_type is None:
                         continue
                     if info.annotation == Any:
